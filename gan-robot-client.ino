@@ -3,32 +3,30 @@
  * There is a lot new capabilities implemented.
  * author unknown
  * updated by chegewara
+ *
+ * Superficially modified to control GAN magic cube robot V1
+ * By Alan Nishioka, January 2026
+ *
+ * BLE protocol documented at:
+ * https://github.com/cubing/cubing.js/blob/main/src/cubing/bluetooth/docs/gan-robot.md
+ *
+ * Tested with ESP32C3 Dev Module (ESP32 C3 Super Mini)
+ * Uses ESP32 BLE library instead of ArduinoBLE
  */
 
 #include "BLEDevice.h"
 //#include "BLEScan.h"
 
 // The remote service we wish to connect to.
-static BLEUUID serviceUUID("4fafc201-1fb5-459e-8fcc-c5c9c331914b");
+static BLEUUID serviceUUID("0000fff0-0000-1000-8000-00805f9b34fb");
+
 // The characteristic of the remote service we are interested in.
-static BLEUUID charUUID("beb5483e-36e1-4688-b7f5-ea07361b26a8");
+static BLEUUID charUUID("0000fff3-0000-1000-8000-00805f9b34fb");
 
 static boolean doConnect = false;
 static boolean connected = false;
-static boolean doScan = false;
 static BLERemoteCharacteristic *pRemoteCharacteristic;
 static BLEAdvertisedDevice *myDevice;
-
-// Callback function to handle notifications
-static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) {
-  Serial.print("Notify callback for characteristic ");
-  Serial.print(pBLERemoteCharacteristic->getUUID().toString().c_str());
-  Serial.print(" of data length ");
-  Serial.println(length);
-  Serial.print("data: ");
-  Serial.write(pData, length);
-  Serial.println();
-}
 
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient *pclient) {}
@@ -73,18 +71,6 @@ bool connectToServer() {
   }
   Serial.println(" - Found our characteristic");
 
-  // Read the value of the characteristic.
-  if (pRemoteCharacteristic->canRead()) {
-    String value = pRemoteCharacteristic->readValue();
-    Serial.print("The characteristic value was: ");
-    Serial.println(value.c_str());
-  }
-
-  if (pRemoteCharacteristic->canNotify()) {
-    // Register/Subscribe for notifications
-    pRemoteCharacteristic->registerForNotify(notifyCallback);
-  }
-
   connected = true;
   return true;
 }
@@ -105,8 +91,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
       BLEDevice::getScan()->stop();
       myDevice = new BLEAdvertisedDevice(advertisedDevice);
       doConnect = true;
-      doScan = true;
-
     }  // Found our server
   }  // onResult
 };  // MyAdvertisedDeviceCallbacks
@@ -127,6 +111,16 @@ void setup() {
   pBLEScan->start(5, false);
 }  // End of setup.
 
+// Timing for state of loop scramble/unscramble
+int seconds = 0;
+
+// Number of moves to scramble/unscramble
+#define MOVES 20
+#define PAUSE 20
+int moves[MOVES];
+byte newValue[32];
+char digit[] = "0123456789ABCDEF";
+
 // This is the Arduino main loop function.
 void loop() {
 
@@ -141,16 +135,77 @@ void loop() {
     }
     doConnect = false;
   }
-
   // If we are connected to a peer BLE Server, update the characteristic each time we are reached
   // with the current time since boot.
   if (connected) {
-    String newValue = "Time since boot: " + String(millis() / 1000);
-    Serial.println("Setting new characteristic value to \"" + newValue + "\"");
 
-    // Set the characteristic's value to be the array of bytes that is actually a string.
-    pRemoteCharacteristic->writeValue(newValue.c_str(), newValue.length());
-  } else if (doScan) {
+    // Scramble cube
+    if (seconds == 0)
+    {
+      // Choose MOVES random numbers
+      // Face is bits 3-1, Direction is bit 0
+      // Don't move same face forward/backward after each other
+      // Only choose face 0-4
+      for( int i = 0; i < MOVES; i++ )
+      {
+          moves[i] = rand() % 10;
+          if(( i > 0 ) && ( moves[i] ^ moves[i-1] ) == 1 ) i--;
+      }
+
+      // Convert moves[] to newValue[] to send to robot
+      // Robot uses one nibble per move
+      // Face is 0x0, 0x3, 0x6, 0x9, 0xC
+      // Direction is Face+0 or Face+2
+      // 180 turn is never used
+      // 0xF means end of moves
+      for( int i = 0; i < MOVES; i++ )
+      {
+        // First shift existing nibble right
+        newValue[i/2] <<= 4;
+        newValue[i/2] |= (( moves[i] >> 1 ) * 3 ) + (( moves[i] & 1 ) * 2 );
+      }
+      newValue[MOVES/2] = 0xff;
+      Serial.print("Scramble   ");
+    }
+
+    // Unscramble cube
+    if (seconds == 20)
+    {
+      // Convert moves[] to newValue[] to send to robot
+      // Count backwards in moves[] and flip direction
+      for( int i = 0; i < MOVES; i++ )
+      {
+        // First shift existing nibble right
+        newValue[i/2] <<= 4;
+        newValue[i/2] |= (( moves[MOVES-i-1] >> 1 ) * 3 ) + (( ~moves[MOVES-i-1] & 1 ) * 2 );
+      }
+      newValue[MOVES/2] = 0xff;
+      Serial.print("Unscramble ");
+    }
+
+    // Send newValue to robot
+    if( seconds == 0 || seconds == 20 )
+    {
+      // Set the characteristic's value to be the array of bytes that is actually a string.
+      pRemoteCharacteristic->writeValue(newValue, MOVES/2+1);
+      for( int i = 0; i < MOVES/2+1; i++ )
+      {
+        Serial.print( digit[((int)newValue[i] >> 4)&0xF] );
+        Serial.print( digit[((int)newValue[i] >> 0)&0xF] );
+        Serial.print(" ");
+      }
+      Serial.println("");
+    }
+
+    // Increment loop state seconds
+    seconds++;
+
+    // Loop seconds
+    seconds %= 40;
+
+    Serial.println(seconds);
+
+  } else {
     BLEDevice::getScan()->start(0);  // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
   }
 
