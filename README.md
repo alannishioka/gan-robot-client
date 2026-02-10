@@ -21,7 +21,7 @@ https://github.com/rsimp/gan-scrambler \
 is a PWA that runs in a bluetooth enabled browser (chrome).
 It is much more complete and includes a solver, but I couldn't get it to work.
 
-u/poliva got it to work here: https://pof.eslack.org/gan-scrambler/
+u/poliva got it to work here: https://pof.eslack.org/gan-scrambler/ \
 But it won't connect to bluetooth in any of my browsers, so I don't know to much about it.
 
 Alan Nishioka\
