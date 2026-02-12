@@ -158,13 +158,17 @@ void loop() {
       // Direction is Face+0 or Face+2
       // 180 turn is never used
       // 0xF means end of moves
-      for( int i = 0; i < MOVES; i++ )
+      for( int i = 0; i < MOVES+1; i++ )
       {
-        // First shift existing nibble right
-        newValue[i/2] <<= 4;
-        newValue[i/2] |= (( moves[i] >> 1 ) * 3 ) + (( moves[i] & 1 ) * 2 );
+        byte nibble;
+
+        // Write top nibble first, bottom nibble second
+        if( i < MOVES ) nibble = (( moves[i] >> 1 ) * 3 ) + (( ~moves[i] & 1 ) * 2 );
+        else            nibble = 0xF;
+
+        if( ~i & 1 ) newValue[i/2]  = nibble << 4;
+        else         newValue[i/2] |= nibble << 0;
       }
-      newValue[MOVES/2] = 0xff;
       Serial.print("Scramble   ");
     }
 
@@ -173,13 +177,17 @@ void loop() {
     {
       // Convert moves[] to newValue[] to send to robot
       // Count backwards in moves[] and flip direction
-      for( int i = 0; i < MOVES; i++ )
+      for( int i = 0; i < MOVES+1; i++ )
       {
-        // First shift existing nibble right
-        newValue[i/2] <<= 4;
-        newValue[i/2] |= (( moves[MOVES-i-1] >> 1 ) * 3 ) + (( ~moves[MOVES-i-1] & 1 ) * 2 );
+        byte nibble;
+
+        // Write top nibble first, bottom nibble second
+        if( i < MOVES ) nibble = (( moves[MOVES-i-1] >> 1 ) * 3 ) + (( ~moves[MOVES-i-1] & 1 ) * 2 );
+        else            nibble = 0xF;
+
+        if( ~i & 1 ) newValue[i/2]  = nibble << 4;
+        else         newValue[i/2] |= nibble << 0;
       }
-      newValue[MOVES/2] = 0xff;
       Serial.print("Unscramble ");
     }
 
