@@ -174,7 +174,7 @@ void loop() {
     }
 
     // Unscramble cube
-    if (seconds == 20)
+    if (seconds == 10)
     {
       // Convert moves[] to newValue[] to send to robot
       // Count backwards in moves[] and flip direction
@@ -194,7 +194,7 @@ void loop() {
     }
 
     // Send newValue to robot
-    if( seconds == 0 || seconds == 20 )
+    if( seconds == 0 || seconds == 10 )
     {
       // Set the characteristic's value to be the array of bytes that is actually a string.
       pRemoteCharacteristic->writeValue(newValue, MOVES/2+1);
@@ -211,7 +211,7 @@ void loop() {
     seconds++;
 
     // Loop seconds
-    seconds %= 40;
+    seconds %= 20;
 
     Serial.println(seconds);
 
