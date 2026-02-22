@@ -33,5 +33,8 @@ The BLE chip has a squiggly antenna wire. <br>
 I had to buy a GAN 356 i Carry E smart cube to use with this robot.  It has dimples in its faces for the jaws to grip.
 I tried using it with another GAN cube, but it kept slipping.
 
+Video of robot in action:
+https://www.youtube.com/watch?v=InnqW4c5yts
+
 Alan Nishioka <br>
-January 2026
+February 2026
