@@ -162,10 +162,11 @@ void loop() {
       {
         byte nibble;
 
-        // Write top nibble first, bottom nibble second
-        if( i < MOVES ) nibble = (( moves[i] >> 1 ) * 3 ) + (( ~moves[i] & 1 ) * 2 );
+        // Format move for robot.  Terminate with 0xF
+        if( i < MOVES ) nibble = (( moves[i] >> 1 ) * 3 ) + (( moves[i] & 1 ) * 2 );
         else            nibble = 0xF;
 
+        // Write top nibble first, bottom nibble second
         if( ~i & 1 ) newValue[i/2]  = nibble << 4;
         else         newValue[i/2] |= nibble << 0;
       }
@@ -181,10 +182,11 @@ void loop() {
       {
         byte nibble;
 
-        // Write top nibble first, bottom nibble second
+        // Format move for robot.  Invert direction to unscramble.  Terminate with 0xF
         if( i < MOVES ) nibble = (( moves[MOVES-i-1] >> 1 ) * 3 ) + (( ~moves[MOVES-i-1] & 1 ) * 2 );
         else            nibble = 0xF;
 
+        // Write top nibble first, bottom nibble second
         if( ~i & 1 ) newValue[i/2]  = nibble << 4;
         else         newValue[i/2] |= nibble << 0;
       }
